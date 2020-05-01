@@ -3,12 +3,16 @@
 # Author: EA4GKQ
 #https://github.com/akleber/fronius-json-tools
 """
-<plugin key="FroniusHttp" name="Fronius http" author="EA4GKQ" version="1.0" externallink="https://domotuto.com">
+<plugin key="FroniusHttp" name="Fronius http" author="EA4GKQ" version="1.0.1" wikilink="https://github.com/ayasystems/froniusHttp" externallink="https://www.fronius.com/es-es/spain/energia-solar/productos">
     <description>
         <h2>Fronius HTTP Pluging</h2><br/>
+        <h3>by @ea4gkq</h3>
+		<br/>
+		<a href="https://domotuto.com/fronius_domoticz_plugin/">https://domotuto.com/fronius_domoticz_plugin/</a>
+		<br/>
     </description>
     <params>
-        <param field="Address" label="Fronius IP" width="200px" required="true" default="192.168.1.51"/>
+        <param field="Address" label="Fronius IP" width="200px" required="true" default="192.168.1.xx"/>
         <param field="Mode1" label="Protocol" width="75px">
             <options>
                 <option label="HTTP" value="80"  default="true" />
