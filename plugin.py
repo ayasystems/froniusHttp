@@ -2,8 +2,11 @@
 # @2020
 # Author: EA4GKQ
 #https://github.com/akleber/fronius-json-tools
+# 06/05/2020
+# - Añadido dummy con valor medio de Grid de las últimas 30 muestras
+# - Mejorada reconexión automática
 """
-<plugin key="FroniusHttp" name="Fronius http" author="EA4GKQ" version="1.0.1" wikilink="https://github.com/ayasystems/froniusHttp" externallink="https://www.fronius.com/es-es/spain/energia-solar/productos">
+<plugin key="FroniusHttp" name="Fronius http" author="EA4GKQ" version="1.0.2" wikilink="https://github.com/ayasystems/froniusHttp" externallink="https://www.fronius.com/es-es/spain/energia-solar/productos">
     <description>
         <h2>Fronius HTTP Pluging</h2><br/>
         <h3>by @ea4gkq</h3>
@@ -55,11 +58,15 @@ try:
  import re
 except Exception as e:
  errmsg += " re import error: "+str(e)
+from random import seed
+from random import gauss
+from functools import reduce
 
 class FroniusHttp:
     httpConn = None
     interval = 1
     runAgain = interval
+    connectedCount = 0
     disconnectCount = 0
     sProtocol = "HTTP"
     DAY_ENERGY = ""
@@ -70,7 +77,11 @@ class FroniusHttp:
     E_Total = ""               #Producción Total
     E_Year = ""                #Producción Año
     P_Grid = ""                #Negativo inyecta Positivo consume   
-    P_Load = ""                #Consumo de la red + solar    
+    P_Load = ""                #Consumo de la red + solar  
+    GRID_W = ""	
+    listGrid = [] 
+    maxGridList = 30
+    avgGrid = 0     
     URL1 = "/solar_api/v1/GetMeterRealtimeData.cgi?Scope=System"
     URL1 = "/solar_api/v1/GetPowerFlowRealtimeData.fcgi"
     URL2 = "/solar_api/v1/GetInverterRealtimeData.cgi?Scope=System"
@@ -93,7 +104,8 @@ class FroniusHttp:
         createDevices(self,"FV_POWER")	
         createDevices(self,"TO_GRID")		
         createDevices(self,"FROM_GRID") 	
-        createDevices(self,"HOME_LOAD")        
+        createDevices(self,"HOME_LOAD") 
+        createDevices(self,"AVGGRID")        
         if (Parameters["Mode1"].strip()  == "443"): self.sProtocol = "HTTPS"
         if (Parameters["Mode2"].strip()  == "High"): Domoticz.Heartbeat(1)
         Domoticz.Error("Address: "+Parameters["Address"])
@@ -108,7 +120,12 @@ class FroniusHttp:
 
     def onStop(self):
         Domoticz.Log("onStop - Plugin is stopping.")
-
+    def Average(self):
+        if(len(self.listGrid)>self.maxGridList):
+            self.listGrid.pop(0)
+        Domoticz.Debug("List values: "+str(self.listGrid))    
+        self.avgGrid = reduce(lambda a,b: a + b, self.listGrid) / len(self.listGrid)
+        self.avgGrid = round(self.avgGrid,0)
     def onConnect(self, Connection, Status, Description):
         if (Status == 0):
             Domoticz.Debug("Fronius connected successfully.")
@@ -138,13 +155,13 @@ class FroniusHttp:
 
         if (Status == 200):
             if ((self.disconnectCount & 1) == 1):
-                #Domoticz.Log("Good Response received from Fronius, Disconnecting.")
+                Domoticz.Log("Good Response received from Solax, Disconnecting.")
                 self.httpConn.Disconnect()
             else:
-                #Domoticz.Log("Good Response received from Fronius, Dropping connection.")
+                Domoticz.Log("Good Response received from Solax, Dropping connection.")
                 self.httpConn = None
             self.disconnectCount = self.disconnectCount + 1
-            processResponse(self,Data)     
+            processResponse(self,Data) 
         elif (Status == 302):
             Domoticz.Log("Fronius returned a Page Moved Error.")
             sendData = { 'Verb' : 'GET',
@@ -157,11 +174,15 @@ class FroniusHttp:
                         }
             Connection.Send(sendData)
         elif (Status == 400):
-            Domoticz.Error("Fronius returned a Bad Request Error.")
+            Domoticz.Error("Solax returned a Bad Request Error.")
+            self.httpConn.Disconnect()
+            self.httpConn = None
         elif (Status == 500):
-            Domoticz.Error("Fronius returned a Server Error.")
+            Domoticz.Error("Solax returned a Server Error.")
+            self.httpConn.Disconnect()
+            self.httpConn = None
         else:
-            Domoticz.Error("Fronius returned a status: "+str(Status))
+            Domoticz.Debug("Solax returned a status: "+str(Status))
 
     def onCommand(self, Unit, Command, Level, Hue):
         Domoticz.Debug("onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
@@ -170,6 +191,10 @@ class FroniusHttp:
         Domoticz.Debug("onDisconnect called for connection to: "+Connection.Address+":"+Connection.Port)
 
     def onHeartbeat(self):
+        if(self.connectedCount>10):
+            self.connectedCount = 0
+            self.httpConn.Disconnect()
+            self.httpConn = None    
         #Domoticz.Trace(True)
         if (self.httpConn != None and (self.httpConn.Connecting() or self.httpConn.Connected())):
             Domoticz.Debug("onHeartbeat called, Connection is alive.")
@@ -180,6 +205,8 @@ class FroniusHttp:
                     self.httpConn = Domoticz.Connection(Name=self.sProtocol+" Test", Transport="TCP/IP", Protocol=self.sProtocol, Address=Parameters["Address"], Port=Parameters["Mode1"])
                 self.httpConn.Connect()
                 self.runAgain = self.interval
+            else:
+                Domoticz.Debug("onHeartbeat called, run again in "+str(self.runAgain)+" heartbeats.")
         #Domoticz.Trace(False)
 
 global _plugin
@@ -254,6 +281,7 @@ def processResponse(self,httpResp):
                 Domoticz.Error("DAY_ENERGY: "+self.DAY_ENERGY)
                 Domoticz.Error("PAC: "+self.PAC)
                 Domoticz.Error("TOTAL_ENERGY: "+self.TOTAL_ENERGY)
+                self.connectedCount = 0
        except:
          Domoticz.Debug(str(e))   
     if(self.current==self.URL1):
@@ -267,6 +295,8 @@ def processResponse(self,httpResp):
             TO_GRID       = jsonData['Body']['Data']['Site']['P_Grid'] * -1
             FROM_GRID     = jsonData['Body']['Data']['Site']['P_Grid'] 
             self.P_PV     =  str(jsonData['Body']['Data']['Site']['P_PV'])
+            self.listGrid.append(FROM_GRID)
+            self.Average()       
             if Parameters["Mode6"] == "-1": 
                 Domoticz.Error("P_PV: "+self.P_PV)
                 Domoticz.Error("E_Day: "+self.E_Day)
@@ -274,6 +304,8 @@ def processResponse(self,httpResp):
                 Domoticz.Error("E_Year: "+self.E_Year)
                 Domoticz.Error("P_Grid: "+self.P_Grid)## 
                 Domoticz.Error("P_Load: "+self.P_Load)## 
+                Domoticz.Error("List: "+str(self.listGrid))
+                Domoticz.Error("AVG Grid: "+str(round(self.avgGrid,0)))     
             instantaneoFV        = self.P_PV
             acumuladoKwhFV       = self.E_Day#acumulado diario
             if(FROM_GRID>=0):
@@ -286,6 +318,8 @@ def processResponse(self,httpResp):
             
             UpdateDevice("FV_POWER",      0, instantaneoFV+";"+acumuladoKwhFV)
             UpdateDevice("HOME_LOAD",      0, self.P_Load+";0")
+            UpdateDevice("AVGGRID",       0, self.avgGrid)
+            self.connectedCount = 0
         except:
          Domoticz.Debug(str(e))   
 def DumpHTTPResponseToLog(httpResp, level=0):
@@ -307,6 +341,7 @@ def DumpHTTPResponseToLog(httpResp, level=0):
         Domoticz.Debug(indentStr + "c>'" + x + "':'" + str(httpResp[x]) + "'")
 def createDevices(self,unitname):
       OptionsSensor = {"Custom": "1;Hz"}
+      OptionsSensorAVG = {"Custom": "1;w"}
       iUnit = -1
       for Device in Devices:
        try:
@@ -333,6 +368,8 @@ def createDevices(self,unitname):
           Domoticz.Device(Name=unitname, Unit=iUnit,Type=243,Subtype=29,Switchtype=0,Used=1,DeviceID=unitname).Create()
          if(unitname=="FV_POWER"):
           Domoticz.Device(Name=unitname, Unit=iUnit,Type=243,Subtype=29,Switchtype=0,Used=1,DeviceID=unitname).Create()
+         if(unitname=="AVGGRID"):		
+          Domoticz.Device(Name=unitname, Unit=iUnit,TypeName='Custom',Options=OptionsSensorAVG,Used=1,DeviceID=unitname).Create()          
         except Exception as e:
          Domoticz.Debug(str(e))
          return False
