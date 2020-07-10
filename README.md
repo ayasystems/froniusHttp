@@ -2,7 +2,7 @@
 FroniusHTTP domoticz plugin para su integración en domoticz
 
 
-![Fronius inverter](https://github.com/ayasystems/FroniusHTTP/raw/master/fronius.jpg)
+![Fronius inverter](https://github.com/ayasystems/FroniusHTTP/raw/master/fronius2.jpg)
 
 ![Domoticz_Fronius_Plugin](https://github.com/ayasystems/FroniusHTTP/raw/master/froniusDomoticz.jpg)
 
