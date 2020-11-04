@@ -205,9 +205,9 @@ class FroniusHttp:
             
             try:
                 processResponse(self,Data)
-                
             except:
-                Domoticz.Error("Plugin onMessage error: "+str(e))
+                Domoticz.Error("Plugin onMessage error: ")
+                
         elif (Status == 302):
             Domoticz.Log("Fronius returned a Page Moved Error.")
             sendData = { 'Verb' : 'GET',
@@ -248,7 +248,7 @@ class FroniusHttp:
             self.httpConn = None    
         #Domoticz.Trace(True)
         if (self.httpConn != None and (self.httpConn.Connecting() or self.httpConn.Connected())):
-            Domoticz.Debug("onHeartbeat called, Connection is alive.")
+            Domoticz.Debug("onHeartbeat called, Connection is down.")
         else:
             self.runAgain = self.runAgain - 1
             if self.runAgain <= 0:
