@@ -377,7 +377,7 @@ def processResponse(self,httpResp):
                     self.IDC      = str(jsonData['Body']['Data']['IDC']['Value'])
                     self.FAC      = str(jsonData['Body']['Data']['FAC']['Value']) 
                     instantaneoFV        = self.PAC
-                    acumuladoKwhFV       = self.E_Day#daily accumulated
+                    acumuladoKwhFV       = self.E_Total#accumulated
                 except:
                     Domoticz.Error("Plugin json Query(F_XXX, error: "+str(e))
  
@@ -436,7 +436,7 @@ def processResponse(self,httpResp):
                     Domoticz.Error("List: "+str(self.listGrid))
                     Domoticz.Error("AVG Grid: "+str(round(self.avgGrid,0)))     
                 instantaneoFV        = self.P_PV
-                acumuladoKwhFV       = self.E_Day#acumulado diario
+                acumuladoKwhFV       = self.E_Total#acumulado
                 if(FROM_GRID>=0):
                     UpdateDevice("TO_GRID",      0, "0;0")
                     UpdateDevice("FROM_GRID",      0, str(FROM_GRID)+";0")
