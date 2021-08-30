@@ -43,7 +43,11 @@ sudo systemctl start domoticz
 ```
  
 
+##También te puede interesar..
 
+Lectura via modbus del inversor fronius
+
+https://github.com/ayasystems/Fronius-node-red-Flow
 
 
 
