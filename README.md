@@ -43,7 +43,7 @@ sudo systemctl start domoticz
 ```
  
 
-##También te puede interesar..
+## También te puede interesar..
 
 Lectura via modbus del inversor fronius
 
