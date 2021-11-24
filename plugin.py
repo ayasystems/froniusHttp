@@ -94,7 +94,7 @@ class FroniusHttp:
     #192.168.1.51/solar_api/v1/GetInverterRealtimeData.cgi?Scope=Device&DataCollection=CommonInverterData&DeviceId=1 
     
     #support for Fronius3.0-1 without Battery
-    URL4 = "/solar_api/v1/GetInverterRealtimeData.cgi?Scope=Device&DeviceID=1&DataCollection=CommonInverterData"
+    URL4 = "/solar_api/v1/GetInverterRealtimeData.cgi?Scope=Device&DeviceId=1&DataCollection=CommonInverterData"
     PAC = ""
     UAC = ""                #Grid + solar consumption
     FAC = ""
