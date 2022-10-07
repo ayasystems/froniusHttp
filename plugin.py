@@ -445,7 +445,9 @@ def processResponse(self,httpResp):
                     UpdateDevice("TO_GRID",      0, str(TO_GRID)+";0")
                     UpdateDevice("FROM_GRID",      0, "0;0")
                 
-                UpdateDevice("FV_POWER",      0, instantaneoFV+";"+acumuladoKwhFV)
+                #UpdateDevice("FV_POWER",      0, instantaneoFV+";"+acumuladoKwhFV)
+		if(jsonData['Body']['Head']['Status']['Code']=0):
+			UpdateDevice("FV_POWER",      0, instantaneoFV+";"+acumuladoKwhFV)
                 UpdateDevice("HOME_LOAD",      0, self.P_Load+";0")
                 UpdateDevice("AVGGRID",       0, self.avgGrid)
                 self.connectedCount = 0
