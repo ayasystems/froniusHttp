@@ -74,6 +74,8 @@ class FroniusHttp:
     runAgain = interval
     connectedCount = 0
     disconnectCount = 0
+    LEDColor = 0
+    ErrorCode = ""
     sProtocol = "HTTP"
     DAY_ENERGY = ""
     PAC = ""
@@ -193,23 +195,20 @@ class FroniusHttp:
         strData = Data["Data"].decode("utf-8", "ignore")
         Status = int(Data["Status"])
         #LogMessage(strData)
-
+        
         if (Status == 200):
-            if ((self.disconnectCount & 1) == 1):
-                Domoticz.Log("Good Response received from Solax, Disconnecting.")
-                self.httpConn.Disconnect()
-            else:
-                Domoticz.Log("Good Response received from Solax, Dropping connection.")
-                self.httpConn = None
-            self.disconnectCount = self.disconnectCount + 1
+ 
+            Domoticz.Debug("Good Response received from Fronius, Disconnecting.")
+            self.httpConn.Disconnect()
+ 
             
             try:
                 processResponse(self,Data)
             except:
-                Domoticz.Error("Plugin onMessage error: ")
+                Domoticz.Error("Plugin processResponse error: ")
                 
         elif (Status == 302):
-            Domoticz.Log("Fronius returned a Page Moved Error.")
+            Domoticz.Error("Fronius returned a Page Moved Error.")
             sendData = { 'Verb' : 'GET',
                          'URL'  : Data["Headers"]["Location"],
                          'Headers' : { 'Content-Type': 'text/xml; charset=utf-8', \
@@ -323,13 +322,20 @@ def processResponse(self,httpResp):
     stringData =  httpResp["Data"].decode("utf-8", "ignore")
     jsonData = json.loads(stringData)
     #Domoticz.Error(stringData)
-    
+    #Domoticz.Debug("Start processResponse")
     #Fronius3
-    self.ErrorCode    =  str(jsonData['Body']['Data']['DeviceStatus']['ErrorCode'])
-    self.LEDColor     =  str(jsonData['Body']['Data']['DeviceStatus']['LEDColor'])
-    Domoticz.Debug("ErrorCode.processResponse: " + str(self.ErrorCode))
-    Domoticz.Debug("LEDColor.processResponse: " + str(self.LEDColor))    
-
+    try:
+        if 'DeviceStatus' in jsonData['Body']['Data']:
+            self.ErrorCode    =  str(jsonData['Body']['Data']['DeviceStatus']['ErrorCode'])
+            self.LEDColor     =  str(jsonData['Body']['Data']['DeviceStatus']['LEDColor'])
+            Domoticz.Error("ErrorCode.processResponse: " + str(self.ErrorCode))
+            Domoticz.Error("LEDColor.processResponse: " + str(self.LEDColor))    
+        else:
+            self.LEDColor==2
+    except:
+        self.LEDColor==2 
+        pass  
+        
     if(int(self.LEDColor) == 2):
         Domoticz.Debug("self.LEDColor.processResponse LED Status is: GREEN : " + str(self.LEDColor)) 
         if (Parameters["Mode3"].strip() == "Fronius3"):
@@ -360,10 +366,10 @@ def processResponse(self,httpResp):
                 self.connectedCount = 0
        except:
          Domoticz.Debug(str(e))
-
+    Domoticz.Debug("Entra en: "+Parameters["Mode3"].strip())
     #Fronius3
     if (Parameters["Mode3"].strip() == "Fronius3"):
-        
+
         if((self.current==self.URL1 or self.current==self.URL4) and int(self.LEDColor) == 2 ):
             try:
                 self.E_Day    =  str(jsonData['Body']['Data']['DAY_ENERGY']['Value'])
@@ -415,7 +421,10 @@ def processResponse(self,httpResp):
         
         if(self.current==self.URL1):
             try:
-                self.P_PV     =  str(jsonData['Body']['Data']['Site']['P_PV'])
+                if(jsonData['Body']['Data']['Site']['P_PV']=='null'):
+                    self.P_PV     =  "0"
+                else:
+                    self.P_PV     =  str(jsonData['Body']['Data']['Site']['P_PV'])
                 self.E_Day    =  str(jsonData['Body']['Data']['Site']['E_Day'])
                 self.E_Total  =  str(jsonData['Body']['Data']['Site']['E_Total'])
                 self.E_Year   =  str(jsonData['Body']['Data']['Site']['E_Year'])
@@ -423,7 +432,7 @@ def processResponse(self,httpResp):
                 self.P_Load   =  str(jsonData['Body']['Data']['Site']['P_Load'] * -1)
                 TO_GRID       = jsonData['Body']['Data']['Site']['P_Grid'] * -1
                 FROM_GRID     = jsonData['Body']['Data']['Site']['P_Grid'] 
-                self.P_PV     =  str(jsonData['Body']['Data']['Site']['P_PV'])
+                #self.P_PV     =  str(jsonData['Body']['Data']['Site']['P_PV'])
                 self.listGrid.append(FROM_GRID)
                 self.Average()       
                 if Parameters["Mode6"] == "-1": 
@@ -440,19 +449,16 @@ def processResponse(self,httpResp):
                 if(FROM_GRID>=0):
                     UpdateDevice("TO_GRID",      0, "0;0")
                     UpdateDevice("FROM_GRID",      0, str(FROM_GRID)+";0")
-                
                 if(TO_GRID>0):
                     UpdateDevice("TO_GRID",      0, str(TO_GRID)+";0")
                     UpdateDevice("FROM_GRID",      0, "0;0")
-                
                 #UpdateDevice("FV_POWER",      0, instantaneoFV+";"+acumuladoKwhFV)
-		if(jsonData['Body']['Head']['Status']['Code']=0):
-			UpdateDevice("FV_POWER",      0, instantaneoFV+";"+acumuladoKwhFV)
+                UpdateDevice("FV_POWER",      0, instantaneoFV+";"+acumuladoKwhFV)
                 UpdateDevice("HOME_LOAD",      0, self.P_Load+";0")
                 UpdateDevice("AVGGRID",       0, self.avgGrid)
                 self.connectedCount = 0
             except:
-             Domoticz.Debug(str(e))  
+             Domoticz.Debug("Error proceso: "+str(e))  
     #Fronius3
 
 def DumpHTTPResponseToLog(httpResp, level=0):
@@ -539,4 +545,4 @@ def UpdateDevice(unitname, nValue, sValue):
       if iUnit>=0: # existe, actualizamos	
             if (Devices[iUnit].nValue != nValue) or (Devices[iUnit].sValue != sValue):
                 Devices[iUnit].Update(nValue=nValue, sValue=str(sValue))
-                Domoticz.Debug("Update "+str(nValue)+":'"+str(sValue)+"' ("+Devices[iUnit].Name+")")
+                #Domoticz.Debug("Update "+str(nValue)+":'"+str(sValue)+"' ("+Devices[iUnit].Name+")")
