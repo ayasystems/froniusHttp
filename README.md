@@ -1,4 +1,8 @@
 # FroniusHTTP
+
+ONLY FRONIUS PRIMO WILL BE SUPPORTED, SORRY
+SOLO SERÁ SOPORTADO FRONIUS PRIMO
+
 FroniusHTTP domoticz plugin para su integración en domoticz
 
 
