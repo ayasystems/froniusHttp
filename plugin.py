@@ -134,7 +134,7 @@ class FroniusHttp:
             Domoticz.Error("onStart error: " + str(e))
 
     def onStop(self):
-        if self.connection:
+        if self.connection and self.connection.Connected():
             self.connection.Disconnect()
             self.connection = None
         Domoticz.Log("onStop - Plugin is stopping.")
