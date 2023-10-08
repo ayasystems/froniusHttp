@@ -6,7 +6,7 @@
 # - Añadido dummy con valor medio de Grid de las últimas 30 muestras
 # - Mejorada reconexión automática
 """
-<plugin key="FroniusHttp" name="Fronius http" author="EA4GKQ" version="1.0.3"
+<plugin key="FroniusHttp" name="Fronius http" author="EA4GKQ" version="1.0.4"
 wikilink="https://github.com/ayasystems/froniusHttp"
 externallink="https://www.fronius.com">
     <description>
@@ -151,6 +151,9 @@ class FroniusHttp:
             Domoticz.Error("onStart error: " + str(e))
 
     def onStop(self):
+        if self.connection:
+            self.connection.Disconnect()
+            self.connection = None
         Domoticz.Log("onStop - Plugin is stopping.")
 
     def onConnect(self, Connection, Status, Description):
@@ -167,8 +170,8 @@ class FroniusHttp:
         status = int(Data["Status"])
 
         if status == 200:
-            Domoticz.Debug("Good Response received from Fronius, Disconnecting.")
-            self.processResponse(self, Data)
+            Domoticz.Debug("Good Response received from Fronius.")
+            self.processResponse(Data)
 
         elif status == 302:
             Domoticz.Log("Fronius returned a Page Moved Error.")
@@ -197,18 +200,21 @@ class FroniusHttp:
             self.connection.Send(self.format_data_response(self.current))
         else:
             Domoticz.Debug("onHeartbeat called, Connection is down.")
+            if not self.connection.Connecting():
+                self.connect()
 
     @staticmethod
     def get_devices_names_to_ids():
         name_to_unit_dict = {}
         last_unit = 0
-        for unit, dev in enumerate(Devices):
+        for unit in Devices:
             # get last unit id taken
             if last_unit < unit:
                 last_unit = unit
 
             # create name unit mapping
-            name_to_unit_dict[dev.name] = unit
+            Domoticz.Debug(f"Creating mapping {Devices[unit].Name}:{unit}")
+            name_to_unit_dict[Devices[unit].DeviceID] = unit
 
         return name_to_unit_dict, last_unit
 
@@ -237,10 +243,12 @@ class FroniusHttp:
                 ("FV_POWER", 29)]
 
         # Check and create all devices
+        last_before_creation = last_unit
         for dev_tuple in dev_name_list:
             name = dev_tuple[0]
-            subtype = dev_tuple[0]
+            subtype = dev_tuple[1]
             if name not in self.name_to_unit_dict:
+                Domoticz.Log(f"Creating device Name:{name} Unit:{last_unit} Subtype:{subtype}.")
                 last_unit += 1
                 Domoticz.Device(Name=name, Unit=last_unit,
                                 Type=243, Subtype=subtype, Switchtype=0,
@@ -256,8 +264,9 @@ class FroniusHttp:
                                 TypeName='Custom', Options={"Custom": "1;w"},
                                 Used=1, DeviceID=name).Create()
 
-        # Update mapping
-        self.name_to_unit_dict, last_unit = FroniusHttp.get_devices_names_to_ids()
+        # Update mapping if needed
+        if last_unit != last_before_creation:
+            self.name_to_unit_dict, last_unit = FroniusHttp.get_devices_names_to_ids()
 
     def set_model(self, model_name):
         Domoticz.Log(f"Model {model_name} selected. Creating devices.")
@@ -293,7 +302,7 @@ class FroniusHttp:
             self.connection = Domoticz.Connection(Name=f"{self.sProtocol}://{self.ipaddress} - Main",
                                                   Transport="TCP/IP",
                                                   Protocol=self.sProtocol,
-                                                  Address=self.ipaddress, Port=self.port)
+                                                  Address=self.ipaddress, Port=str(self.port))
         self.connection.Connect()
 
     def average(self):
@@ -317,13 +326,13 @@ class FroniusHttp:
             Domoticz.Error("No Data in response")
             return
 
-        data = data_dict["Body"]["Data"]
+        data = data["Data"]
 
-        self.ErrorCode = data.get('DeviceStatus', {}).get('ErrorCode', defaul="")
+        self.ErrorCode = data.get('DeviceStatus', {}).get('ErrorCode', "")
         if self.ErrorCode:
             Domoticz.Log(f"ErrorCode.processResponse: {self.ErrorCode}")
 
-        self.LEDColor = int(data.get('DeviceStatus', {}).get('LEDColor', defaul=2))
+        self.LEDColor = int(data.get('DeviceStatus', {}).get('LEDColor', 2))
         Domoticz.Log(f"LEDColor.processResponse: {self.LEDColor}")
 
         self.update_url()
@@ -338,8 +347,6 @@ class FroniusHttp:
             self.IAC = get_val(data, "IAC")
             self.IDC = get_val(data, "IDC")
             self.FAC = get_val(data, "FAC")
-            instantaneoFV = self.PAC
-            acumuladoKwhFV = self.E_Total  # accumulated
 
             Domoticz.Debug("self.PAC.processResponse.URL4  : " + str(self.PAC))
             Domoticz.Debug("self.E_Day.processResponse.URL4 : " + str(self.E_Day))
@@ -355,7 +362,7 @@ class FroniusHttp:
                 Domoticz.Error("F_IDC: " + self.IDC)
                 Domoticz.Error("F_FAC: " + self.FAC)
 
-            UpdateDevice(self.name_to_unit_dict["F_PAC"], 0, instantaneoFV + ";" + acumuladoKwhFV)
+            UpdateDevice(self.name_to_unit_dict["F_PAC"], 0, self.PAC + ";" + self.E_Total)
             UpdateDevice(self.name_to_unit_dict["F_UAC"], 0, self.UAC + ";0")
             UpdateDevice(self.name_to_unit_dict["F_UDC"], 0, self.UDC + ";0")
             UpdateDevice(self.name_to_unit_dict["F_FAC"], 0, self.FAC + ";0")
@@ -483,7 +490,7 @@ def DumpHTTPResponseToLog(httpResp, level=0):
 
 
 def get_val(data_dict, key, ldef=""):
-    return str(data_dict.get(key, {}).get("Value", default=ldef))
+    return str(data_dict.get(key, {}).get("Value", ldef))
 
 
 def UpdateDevice(iUnit, nValue, sValue):
@@ -491,6 +498,6 @@ def UpdateDevice(iUnit, nValue, sValue):
     #        if (Devices[Device].DeviceID.strip() == unitname):
     if iUnit in Devices:
         device = Devices[iUnit]
-        if device.nValue != nValue or device.sValue != sValue:
+        if device.nValue != nValue or (device.sValue != sValue and sValue != ""):
             Domoticz.Log(f"Updating device {device.Name} with values {device.nValue}:{device.sValue}")
             device.Update(nValue=nValue, sValue=str(sValue))
