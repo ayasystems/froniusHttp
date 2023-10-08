@@ -480,6 +480,6 @@ def UpdateDevice(iUnit, nValue, sValue):
     #        if (Devices[Device].DeviceID.strip() == unitname):
     if iUnit in Devices:
         device = Devices[iUnit]
-        if device.nValue != nValue or (device.sValue != sValue and sValue not in [";", ":0"]):
+        if device.nValue != nValue or (device.sValue != sValue and sValue not in [";", ";0"]):
             Domoticz.Log(f"Updating device {device.Name} with values {device.nValue}:{device.sValue}")
             device.Update(nValue=nValue, sValue=str(sValue))
