@@ -1,57 +1,49 @@
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/ayasystems/froniusHttp/blob/master/README.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/ayasystems/froniusHttp/blob/master/README.es.md)
+
+
 # FroniusHTTP
+FroniusHTTP Domoticz plugin to let you integrate your inverters with your HA.
 
-ONLY FRONIUS PRIMO WILL BE SUPPORTED, SORRY
-SOLO SERÁ SOPORTADO FRONIUS PRIMO
-
-FroniusHTTP domoticz plugin para su integración en domoticz
-
+## Constrains
+Only single instance of the inverter is supported.
 
 ![Fronius inverter](https://github.com/ayasystems/FroniusHTTP/raw/master/fronius2.jpg)
 
 ![Domoticz_Fronius_Plugin](https://github.com/ayasystems/FroniusHTTP/raw/master/froniusDomoticz.jpg)
 
-Más info -> https://domotuto.com/fronius_domoticz_plugin/
+More information (Spanish language only) -> https://domotuto.com/fronius_domoticz_plugin/
 
-## Instalación
+## Installation
 
-1. Clona el repositorio dentro de tu carpeta de plugins de domoticz
-```
+1. Navigate to the Domoticz's plugins location
+```shell
 cd domoticz/plugins
+```
+2. Clone the repository
+```shell
 git clone https://github.com/ayasystems/froniusHttp.git
+```   
+2. Restart Domoticz
+```shell
+sudo systemctl restart domoticz
 ```
-2. Reinicia domotiz
-```
-sudo systemctl stop domoticz
-sudo systemctl start domoticz
-```
-3. Ve a la página de "Hardware" y añade un nuevo hardware, en tipo selecciona "Fronius http"
-4. Especifica la ip de tu inversor Fronius
-5. Recuerda permitir añadir nuevos dispositivos en el menú de ajustes
+3. Go to the "Hardware" page and add new hardware, in type select "Fronius http"
+4. Configure your devices on the configuration page
 
+NOTE: Remember to allow adding new devices in the settings menu
 
-## Actualización del plugin
+## Plugin update
 
-
-1. Para domoticz 
-```
-sudo systemctl stop domoticz
-```
-2. Ve al directorio del plugin y haz un git pull para que actualice la versión 
-```
+1. Navigate to the plugin location 
+```shell
 cd domoticz/plugins/froniusHttp
+```
+2. Pull latest plugin version
+```shell
 git pull
 ```
-3. Start domoticz
+3. Restart Domoticz
 ```
 sudo systemctl start domoticz
 ```
- 
-
-## También te puede interesar..
-
-Lectura via modbus del inversor fronius
-
-https://github.com/ayasystems/Fronius-node-red-Flow
-
-
-
